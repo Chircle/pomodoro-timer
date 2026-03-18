@@ -25,10 +25,10 @@ export default function PomodoroPage() {
 
   // Init audio on client only
   useEffect(() => {
-    focusAudio.current = new Audio("/audio/dark-mode-build.mp3")
+    focusAudio.current = new Audio("../audio/dark-mode-build.mp3")
     focusAudio.current.volume = volume
     focusAudio.current.loop = true
-    breakAudio.current = new Audio("/audio/sunny-nap-plushies.mp3")
+    breakAudio.current = new Audio("../audio/sunny-nap-plushies.mp3")
     breakAudio.current.volume = volume
     breakAudio.current.loop = true
     return () => {
