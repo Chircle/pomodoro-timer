@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === 'production'
+
 const nextConfig = {
-  output: 'export',  // NEU: Für Static Export
-  basePath: '/pomodoro-timer',  // NEU: Ersetze mit deinem Repo-Namen!
+  output: 'export',
+  basePath: isProd ? '/pomodoro-timer' : '',
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,  // Hast du schon ✓
+    unoptimized: true,
   },
 }
 
