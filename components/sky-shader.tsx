@@ -2,237 +2,145 @@
 
 import { useEffect, useRef } from "react"
 
-// dayProgress: 0.0 = midnight, 0.5 = noon, 1.0 = midnight again
-// We drive it from outside so the timer controls the "day"
+// colorStops: time 0.0 = midnight, 0.5 = noon, 1.0 = midnight again
+const colorStops: { time: number; top: number[]; bottom: number[] }[] = [
+  { time: 0.00, top: [10,22,40],    bottom: [5,11,26]    },
+  { time: 0.08, top: [15,26,50],    bottom: [8,13,30]    },
+  { time: 0.15, top: [53,32,80],    bottom: [18,16,40]   },
+  { time: 0.20, top: [107,58,106],  bottom: [58,36,72]   },
+  { time: 0.25, top: [165,90,112],  bottom: [96,46,72]   },
+  { time: 0.30, top: [216,106,117], bottom: [122,56,80]  },
+  { time: 0.35, top: [236,142,122], bottom: [149,92,101] },
+  { time: 0.40, top: [255,190,138], bottom: [202,112,101]},
+  { time: 0.45, top: [255,232,202], bottom: [125,213,232]},
+  { time: 0.50, top: [184,224,248], bottom: [112,218,250]},
+  { time: 0.55, top: [200,229,248], bottom: [128,220,248]},
+  { time: 0.60, top: [232,239,248], bottom: [160,224,240]},
+  { time: 0.65, top: [245,232,216], bottom: [184,213,229]},
+  { time: 0.70, top: [255,200,160], bottom: [208,181,192]},
+  { time: 0.75, top: [255,152,112], bottom: [168,154,170]},
+  { time: 0.80, top: [192,85,72],   bottom: [96,48,96]   },
+  { time: 0.85, top: [128,58,56],   bottom: [53,21,64]   },
+  { time: 0.90, top: [69,31,48],    bottom: [37,16,53]   },
+  { time: 0.95, top: [31,21,40],    bottom: [13,9,28]    },
+  { time: 1.00, top: [10,22,40],    bottom: [5,11,26]    },
+]
 
-const VERT = `
-attribute vec2 a_position;
-void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2
+}
+
+function lerp3(a: number[], b: number[], t: number): number[] {
+  const e = easeInOutCubic(t)
+  return [
+    Math.round(a[0] + (b[0]-a[0])*e),
+    Math.round(a[1] + (b[1]-a[1])*e),
+    Math.round(a[2] + (b[2]-a[2])*e),
+  ]
+}
+
+function skyGradient(p: number): string {
+  const n = Math.min(Math.max(p, 0), 1)
+  let lo = colorStops[0], hi = colorStops[1]
+  for (let i = 0; i < colorStops.length - 1; i++) {
+    if (n >= colorStops[i].time && n <= colorStops[i+1].time) {
+      lo = colorStops[i]; hi = colorStops[i+1]; break
+    }
+  }
+  const span = hi.time - lo.time || 1
+  const lt   = (n - lo.time) / span
+  const top  = lerp3(lo.top,    hi.top,    lt)
+  const bot  = lerp3(lo.bottom, hi.bottom, lt)
+  return `linear-gradient(to bottom, rgb(${top[0]},${top[1]},${top[2]}) 0%, rgb(${bot[0]},${bot[1]},${bot[2]}) 100%)`
+}
+
+const SKY_CSS = `
+.ssky{position:fixed;inset:0;width:100%;height:100%;z-index:0;overflow:hidden;}
+.ssky-stars{position:absolute;width:100%;height:100%;opacity:0;transition:opacity 3s ease-in-out;}
+.ssky-star{position:absolute;background:white;border-radius:50%;animation:sskTwinkle 3s ease-in-out infinite;}
+.ssky-star:nth-child(odd){animation-delay:-1.5s;}
+.ssky-ss{position:absolute;background:white;border-radius:50%;opacity:0;box-shadow:0 0 6px 2px rgba(255,255,255,0.8);transition:opacity 2s ease-in-out;}
+.ssky-ss::before{content:'';position:absolute;top:50%;left:50%;height:2px;background:linear-gradient(90deg,white,transparent);transform:translate(-100%,-50%);}
+.ssky-ss1{width:3px;height:3px;top:8%;left:15%;animation:sskShoot1 16s ease-in infinite;animation-delay:15s;}
+.ssky-ss1::before{width:150px;}
+.ssky-ss2{width:2px;height:2px;top:18%;left:60%;animation:sskShoot2 8s ease-in infinite;animation-delay:45s;}
+.ssky-ss2::before{width:80px;}
+.ssky-ss3{width:1.5px;height:1.5px;top:12%;left:40%;animation:sskShoot3 12s ease-in infinite;animation-delay:75s;}
+.ssky-ss3::before{width:100px;opacity:0.8;}
+.ssky-body{position:absolute;left:50%;top:50%;width:80px;height:80px;margin-left:-40px;margin-top:-40px;border-radius:50%;will-change:transform,opacity;}
+.ssky-cel-wrap{position:absolute;inset:0;pointer-events:none;transition:opacity 3s ease-in-out;}
+.ssky-sun{background:radial-gradient(circle,#fff9e6 0%,#ffdb4d 30%,#ff9500 70%,#ff6b00 100%);box-shadow:0 0 40px rgba(255,200,0,.8),0 0 80px rgba(255,150,0,.5),0 0 120px rgba(255,100,0,.3);animation:sskOrbitSun 120s linear infinite,sskSunGlow 120s linear infinite;}
+.ssky-moon{background:radial-gradient(circle,#fff 0%,#e8ecf0 40%,#b0b8c0 100%);box-shadow:0 0 20px rgba(255,255,255,.4),0 0 40px rgba(200,220,255,.2);animation:sskOrbitMoon 120s linear infinite,sskMoonGlow 120s linear infinite;}
+.ssky-moon::before{content:'';position:absolute;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(0,0,0,.1) 8%,transparent 8%),radial-gradient(circle at 60% 50%,rgba(0,0,0,.08) 12%,transparent 12%),radial-gradient(circle at 45% 70%,rgba(0,0,0,.06) 6%,transparent 6%),radial-gradient(circle at 75% 35%,rgba(0,0,0,.07) 10%,transparent 10%);}
+.ssky-cloud{position:absolute;opacity:0;will-change:transform,opacity;transition:opacity 3s ease-in-out;}
+.ssky-clayer{position:absolute;background:rgba(255,255,255,.7);border-radius:100px;filter:blur(8px);}
+.ssky-c1{top:20%;left:-200px;animation:sskDrift1 80s linear infinite;}
+.ssky-c1 .ssky-clayer:nth-child(1){width:100px;height:40px;}
+.ssky-c1 .ssky-clayer:nth-child(2){width:120px;height:50px;left:40px;top:-10px;}
+.ssky-c1 .ssky-clayer:nth-child(3){width:80px;height:35px;left:90px;top:5px;}
+.ssky-c2{top:35%;left:-200px;animation:sskDrift2 100s linear infinite;animation-delay:-30s;}
+.ssky-c2 .ssky-clayer:nth-child(1){width:90px;height:35px;}
+.ssky-c2 .ssky-clayer:nth-child(2){width:110px;height:45px;left:30px;top:-8px;}
+.ssky-c2 .ssky-clayer:nth-child(3){width:70px;height:30px;left:80px;top:3px;}
+.ssky-c3{top:55%;left:-200px;animation:sskDrift3 120s linear infinite;animation-delay:-60s;}
+.ssky-c3 .ssky-clayer:nth-child(1){width:110px;height:45px;}
+.ssky-c3 .ssky-clayer:nth-child(2){width:130px;height:55px;left:45px;top:-12px;}
+.ssky-c3 .ssky-clayer:nth-child(3){width:90px;height:40px;left:100px;top:5px;}
+.ssky-haze{position:absolute;bottom:0;width:100%;height:30%;background:linear-gradient(to top,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity 3s ease-in-out;}
+@keyframes sskOrbitSun{
+  0%  {transform:translate(0,70vh) rotate(0deg) translateX(45vw) rotate(0deg);opacity:0;}
+  10% {opacity:1;}
+  25% {transform:translate(0,0) rotate(90deg) translateX(45vw) rotate(-90deg);}
+  50% {transform:translate(0,-30vh) rotate(180deg) translateX(45vw) rotate(-180deg);}
+  75% {transform:translate(0,0) rotate(270deg) translateX(45vw) rotate(-270deg);}
+  90% {opacity:1;}
+  100%{transform:translate(0,70vh) rotate(360deg) translateX(45vw) rotate(-360deg);opacity:0;}
+}
+@keyframes sskOrbitMoon{
+  0%  {transform:translate(0,-30vh) rotate(180deg) translateX(45vw) rotate(-180deg);opacity:1;}
+  10% {opacity:1;}
+  25% {transform:translate(0,0) rotate(270deg) translateX(45vw) rotate(-270deg);}
+  40% {opacity:1;}
+  50% {transform:translate(0,70vh) rotate(360deg) translateX(45vw) rotate(-360deg);opacity:0;}
+  60% {opacity:0;}
+  75% {transform:translate(0,0) rotate(450deg) translateX(45vw) rotate(-450deg);opacity:1;}
+  90% {opacity:1;}
+  100%{transform:translate(0,-30vh) rotate(540deg) translateX(45vw) rotate(-540deg);}
+}
+@keyframes sskSunGlow{
+  0%,100%{filter:brightness(.3);}
+  20%    {filter:brightness(1.2);}
+  50%    {filter:brightness(1.3);}
+  80%    {filter:brightness(.9);}
+}
+@keyframes sskMoonGlow{
+  0%,100%{filter:brightness(1);}
+  50%    {filter:brightness(.3);}
+}
+@keyframes sskTwinkle{
+  0%,100%{opacity:1;transform:scale(1);}
+  50%    {opacity:.3;transform:scale(.8);}
+}
+@keyframes sskShoot1{
+  0%  {transform:translate(0,0) rotate(45deg);opacity:0;}
+  5%  {opacity:1;}
+  100%{transform:translate(80vw,80vh) rotate(45deg);opacity:0;}
+}
+@keyframes sskShoot2{
+  0%  {transform:translate(0,0) rotate(45deg);opacity:0;}
+  8%  {opacity:1;}
+  100%{transform:translate(60vw,60vh) rotate(45deg);opacity:0;}
+}
+@keyframes sskShoot3{
+  0%  {transform:translate(0,0) rotate(45deg);opacity:0;}
+  6%  {opacity:1;}
+  100%{transform:translate(70vw,70vh) rotate(45deg);opacity:0;}
+}
+@keyframes sskDrift1{from{transform:translateX(0);}to{transform:translateX(calc(100vw + 400px));}}
+@keyframes sskDrift2{from{transform:translateX(0);}to{transform:translateX(calc(100vw + 400px));}}
+@keyframes sskDrift3{from{transform:translateX(0);}to{transform:translateX(calc(100vw + 400px));}}
+@media(max-width:768px){.ssky-body{width:60px;height:60px;margin-left:-30px;margin-top:-30px;}}
 `
-
-const FRAG = `
-precision highp float;
-
-uniform float u_time;
-uniform float u_day;
-uniform vec2  u_resolution;
-uniform vec2  u_mouse;
-
-/* ── stripe-free hash ── */
-float hash2(vec2 p) {
-  vec2 q = fract(p * vec2(0.1031, 0.1030));
-  q += dot(q, q.yx + 19.19);
-  return fract((q.x + q.y) * q.x);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p); vec2 f = fract(p);
-  vec2 u = f*f*(3.0-2.0*f);
-  return mix(mix(hash2(i),           hash2(i+vec2(1,0)), u.x),
-             mix(hash2(i+vec2(0,1)), hash2(i+vec2(1,1)), u.x), u.y);
-}
-
-float fbm(vec2 p) {
-  float v=0.0, a=0.52;
-  mat2 rot = mat2(0.8,-0.6,0.6,0.8);
-  for(int i=0;i<5;i++){ v+=a*noise(p); p=rot*p*2.1+vec2(1.7,9.2); a*=0.48; }
-  return v;
-}
-
-/* smooth step through a colour keyframe list (GLSL 1.0 safe) */
-vec3 lerpKey(float t,
-    vec3 c0,vec3 c1,vec3 c2,vec3 c3,vec3 c4,
-    vec3 c5,vec3 c6,vec3 c7,vec3 c8) {
-  float s = clamp(t, 0.0, 1.0) * 8.0;
-  int   i = int(s);
-  float f = smoothstep(0.0, 1.0, fract(s));
-  vec3 a = c0;
-  if(i>=1) a=c1; if(i>=2) a=c2; if(i>=3) a=c3;
-  if(i>=4) a=c4; if(i>=5) a=c5; if(i>=6) a=c6; if(i>=7) a=c7;
-  vec3 b = c1;
-  if(i>=1) b=c2; if(i>=2) b=c3; if(i>=3) b=c4;
-  if(i>=4) b=c5; if(i>=5) b=c6; if(i>=6) b=c7; if(i>=7) b=c8;
-  return mix(a, b, f);
-}
-
-/* day keys: midnight, predawn, sunrise, morning, noon, afternoon, sunset, dusk, midnight */
-vec3 skyTop(float d) {
-  return lerpKey(d,
-    vec3(0.02,0.02,0.10),  /* midnight navy */
-    vec3(0.08,0.06,0.22),  /* predawn indigo */
-    vec3(0.72,0.38,0.55),  /* sunrise pink */
-    vec3(0.32,0.60,0.95),  /* morning blue */
-    vec3(0.18,0.48,0.92),  /* noon deep blue */
-    vec3(0.30,0.58,0.95),  /* afternoon */
-    vec3(0.65,0.28,0.42),  /* sunset rose */
-    vec3(0.18,0.08,0.32),  /* dusk purple */
-    vec3(0.02,0.02,0.10)); /* midnight */
-}
-vec3 skyBot(float d) {
-  return lerpKey(d,
-    vec3(0.04,0.04,0.16),
-    vec3(0.15,0.10,0.30),
-    vec3(1.00,0.70,0.35),  /* sunrise orange horizon */
-    vec3(0.65,0.85,1.00),
-    vec3(0.58,0.80,1.00),
-    vec3(0.68,0.85,1.00),
-    vec3(1.00,0.55,0.22),  /* sunset orange */
-    vec3(0.35,0.14,0.42),
-    vec3(0.04,0.04,0.16));
-}
-
-/* sun arc: left at d=0.25, top at d=0.5, right at d=0.75. below horizon at night */
-vec2 sunPos(float d) {
-  float angle = (d - 0.25) * 3.14159;
-  float x = 0.5 + 0.46 * cos(3.14159 - angle);
-  float y = 0.85 - 0.70 * sin(angle);
-  return vec2(x, y);
-}
-float sunBrightness(float d) {
-  return smoothstep(0.20, 0.30, d) * smoothstep(0.80, 0.70, d);
-}
-
-/* ── stars: ~10 sparse ones, twinkle by size ── */
-vec3 drawStars(vec2 uv, float nightAmt) {
-  if(nightAmt < 0.01) return vec3(0.0);
-  vec3 stars = vec3(0.0);
-
-  /* coarse grid → very few cells → very few stars */
-  float scale  = 8.0;   /* 8x8 = 64 cells, ~10% occupied = ~6-8 stars */
-  vec2  grid   = floor(uv * scale);
-  vec2  cell   = fract(uv * scale);
-  float rnd    = hash2(grid);
-
-  if(rnd > 0.10) return vec3(0.0);   /* only ~10% of cells get a star */
-
-  /* position within cell (avoid edges) */
-  float rx = hash2(grid + 0.1) * 0.6 + 0.2;
-  float ry = hash2(grid + 0.3) * 0.6 + 0.2;
-  vec2  sp = vec2(rx, ry);
-  float d  = length(cell - sp);
-
-  /* twinkle: radius pulses slowly */
-  float speed   = 0.6 + rnd * 1.2;
-  float phase   = rnd * 6.28;
-  float twinkle = 0.50 + 0.50 * sin(u_time * speed + phase);  /* 0..1 */
-  float radius  = mix(0.008, 0.022, twinkle);                 /* size change */
-
-  float core = exp(-d * d / (radius * radius * 0.5));
-  float glow = exp(-d * d / (radius * radius * 8.0)) * 0.3;
-
-  vec3 col = mix(vec3(0.85, 0.92, 1.00), vec3(1.00, 0.95, 0.80), rnd);
-  stars = col * (core + glow) * nightAmt;
-  return stars;
-}
-
-/* ── clouds ── */
-float cloudLayer(vec2 uv, float speed, float seed) {
-  float cx = fract(uv.x + u_time * speed + seed);
-  vec2  cp = vec2(cx * 3.2, uv.y * 1.6 + seed * 2.1);
-  return smoothstep(0.50, 0.68, fbm(cp));
-}
-
-void main() {
-  vec2 uv    = gl_FragCoord.xy / u_resolution;
-  uv.y       = 1.0 - uv.y;          /* Y=0 top */
-  vec2 mouse = u_mouse / u_resolution;
-
-  float d    = u_day;
-  float sb   = sunBrightness(d);
-  float night = 1.0 - smoothstep(0.15, 0.28, d) * smoothstep(0.85, 0.72, d);
-
-  /* ── sky gradient ── */
-  vec3 top = skyTop(d);
-  vec3 bot = skyBot(d);
-  vec3 col = mix(top, bot, pow(clamp(uv.y, 0.0, 1.0), 0.55));
-
-  /* ── horizon glow (sunrise / sunset) ── */
-  float isSunrise = smoothstep(0.20, 0.30, d) * smoothstep(0.38, 0.29, d);
-  float isSunset  = smoothstep(0.62, 0.72, d) * smoothstep(0.83, 0.72, d);
-  float glow      = max(isSunrise, isSunset);
-  vec3  glowCol   = mix(vec3(1.00,0.62,0.22), vec3(1.00,0.35,0.18), isSunset);
-  float hGlow     = smoothstep(0.55, 1.00, uv.y) * pow(uv.y, 2.0);
-  col = mix(col, glowCol, hGlow * glow * 0.75);
-  /* radial glow from horizon center */
-  float hRadial = exp(-abs(uv.x - 0.5) * 3.5) * smoothstep(0.50, 1.0, uv.y);
-  col = mix(col, glowCol * 1.3, hRadial * glow * 0.35);
-
-  /* ── clouds ── */
-  float c1 = cloudLayer(vec2(uv.x, uv.y*0.4+0.05), 0.0014, 0.00);
-  float c2 = cloudLayer(vec2(uv.x, uv.y*0.3+0.10), 0.0009, 0.43);
-  float c3 = cloudLayer(vec2(uv.x, uv.y*0.5+0.06), 0.0018, 0.77);
-  float clouds = clamp(c1*0.55 + c2*0.80 + c3*0.45, 0.0, 1.0)
-               * smoothstep(0.80, 0.20, uv.y)   /* fade toward horizon */
-               * (sb * 0.7 + glow * 0.3);
-  /* night clouds: barely visible deep-blue wisps */
-  float nightClouds = clamp(c2 * 0.5 + c3 * 0.3, 0.0, 1.0)
-                    * smoothstep(0.70, 0.15, uv.y) * night * 0.18;
-  vec3 cloudDay   = mix(vec3(1.00), glowCol * 1.15, glow * 0.55);
-  vec3 cloudNight = vec3(0.25, 0.30, 0.52);
-  col = mix(col, cloudDay,   clamp(clouds, 0.0, 1.0));
-  col = mix(col, cloudNight, clamp(nightClouds, 0.0, 1.0));
-
-  /* ── stars ── */
-  col += drawStars(uv, night);
-
-  /* ── SUN — large visible disc that clearly travels across the screen ── */
-  vec2  sp     = sunPos(d);
-  float sd     = length(uv - sp);
-  /* aspect correction so disc is round */
-  float aspect = u_resolution.x / u_resolution.y;
-  vec2  spAsp  = (uv - sp) * vec2(aspect, 1.0);
-  float sdAsp  = length(spAsp);
-
-  vec3  sunHue = mix(vec3(1.00,0.97,0.85), vec3(1.00,0.68,0.22), glow);
-
-  /* disc radius ~3.5% of screen height */
-  float disc   = smoothstep(0.038, 0.028, sdAsp) * sb;
-  /* inner bright centre */
-  float centre = smoothstep(0.018, 0.005, sdAsp) * sb;
-  /* soft corona */
-  float corona = exp(-sdAsp * sdAsp * 55.0)  * sb * 0.65;
-  /* wide atmospheric scatter */
-  float atmo   = exp(-sd    * sd    *  4.0)  * sb * 0.18;
-
-  col  = col + sunHue * atmo;
-  col  = col + sunHue * corona;
-  col  = mix(col, sunHue * 1.1, disc);
-  col  = mix(col, vec3(1.00, 0.99, 0.95), centre);
-
-  /* ── MOON — glowing crescent disc, same arc opposite side ── */
-  float moonD  = fract(d + 0.5);
-  vec2  mp     = sunPos(moonD);
-  float moonB  = clamp(smoothstep(0.28, 0.18, d) + smoothstep(0.72, 0.82, d), 0.0, 1.0);
-  vec2  mpAsp  = (uv - mp) * vec2(aspect, 1.0);
-  float mdAsp  = length(mpAsp);
-  float mDist  = length(uv - mp);
-
-  /* disc + crescent shadow (offset slightly) */
-  vec2  shadowAsp = (uv - mp + vec2(0.022, 0.010)) * vec2(aspect, 1.0);
-  float mDisc     = smoothstep(0.034, 0.025, mdAsp) * moonB;
-  float mShadow   = smoothstep(0.034, 0.025, length(shadowAsp)) * moonB;
-  float mGlow     = exp(-mDist * mDist * 80.0) * moonB * 0.45;
-
-  col += vec3(0.50, 0.58, 0.80) * mGlow;
-  /* crescent = disc minus shadow */
-  col  = mix(col, vec3(0.93, 0.94, 0.90), clamp(mDisc - mShadow * 0.85, 0.0, 1.0));
-
-  /* ── soft mouse glow ── */
-  float md   = length(uv - mouse);
-  col = mix(col, col + 0.12, exp(-md*md*7.0)  * 0.40);
-  col = mix(col, col + 0.18, exp(-md*md*30.0) * 0.25);
-
-  col = clamp(col, 0.0, 1.0);
-  gl_FragColor = vec4(col, 1.0);
-}
-`
-
-function compileShader(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
-  const sh = gl.createShader(type)!
-  gl.shaderSource(sh, src)
-  gl.compileShader(sh)
-  return sh
-}
 
 interface SkyShaderProps {
   /** 0..1 — full day cycle driven by the timer progress */
@@ -240,79 +148,84 @@ interface SkyShaderProps {
 }
 
 export function SkyShader({ dayProgress }: SkyShaderProps) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const dayRef     = useRef(dayProgress)
-  useEffect(() => { dayRef.current = dayProgress }, [dayProgress])
+  const skyRef      = useRef<HTMLDivElement>(null)
+  const starsRef    = useRef<HTMLDivElement>(null)
+  const ss1Ref      = useRef<HTMLDivElement>(null)
+  const ss2Ref      = useRef<HTMLDivElement>(null)
+  const ss3Ref      = useRef<HTMLDivElement>(null)
+  const sunWrapRef  = useRef<HTMLDivElement>(null)
+  const moonWrapRef = useRef<HTMLDivElement>(null)
+  const c1Ref       = useRef<HTMLDivElement>(null)
+  const c2Ref       = useRef<HTMLDivElement>(null)
+  const c3Ref       = useRef<HTMLDivElement>(null)
+  const hazeRef     = useRef<HTMLDivElement>(null)
 
+  // Generate stars on mount
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const gl = canvas.getContext("webgl")
-    if (!gl) return
-
-    const prog = gl.createProgram()!
-    gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER,   VERT))
-    gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, FRAG))
-    gl.linkProgram(prog)
-    gl.useProgram(prog)
-
-    const buf = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW)
-    const posLoc = gl.getAttribLocation(prog, "a_position")
-    gl.enableVertexAttribArray(posLoc)
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
-
-    const uTime  = gl.getUniformLocation(prog, "u_time")
-    const uDay   = gl.getUniformLocation(prog, "u_day")
-    const uRes   = gl.getUniformLocation(prog, "u_resolution")
-    const uMouse = gl.getUniformLocation(prog, "u_mouse")
-
-    let targetX = window.innerWidth  / 2
-    let targetY = window.innerHeight / 2
-    let smoothX = targetX
-    let smoothY = targetY
-
-    const onMove = (e: MouseEvent) => { targetX = e.clientX; targetY = e.clientY }
-    window.addEventListener("mousemove", onMove)
-
-    const resize = () => {
-      canvas.width  = window.innerWidth
-      canvas.height = window.innerHeight
-      gl.viewport(0, 0, canvas.width, canvas.height)
-    }
-    resize()
-    window.addEventListener("resize", resize)
-
-    let raf: number
-    const t0 = performance.now()
-
-    const render = () => {
-      const t = (performance.now() - t0) / 1000
-      smoothX += (targetX - smoothX) * 0.07
-      smoothY += (targetY - smoothY) * 0.07
-
-      gl.uniform1f(uTime,  t)
-      gl.uniform1f(uDay,   dayRef.current)
-      gl.uniform2f(uRes,   canvas.width, canvas.height)
-      gl.uniform2f(uMouse, smoothX, smoothY)
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-      raf = requestAnimationFrame(render)
-    }
-
-    render()
-
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("resize",    resize)
+    const stars = starsRef.current
+    if (!stars) return
+    for (let i = 0; i < 150; i++) {
+      const star = document.createElement("div")
+      star.className = "ssky-star"
+      const size = Math.random() * 2 + 0.5
+      star.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${Math.random()*2+2}s`
+      stars.appendChild(star)
     }
   }, [])
 
+  // Update background gradient + element visibility based on dayProgress
+  useEffect(() => {
+    const sky = skyRef.current
+    if (!sky) return
+
+    sky.style.background = skyGradient(dayProgress)
+
+    const isNight = dayProgress < 0.15 || dayProgress > 0.75
+    const isDay   = dayProgress > 0.20 && dayProgress < 0.80
+
+    if (starsRef.current) starsRef.current.style.opacity = isNight ? "1" : "0"
+    const ssOp = isNight ? "" : "0"
+    if (ss1Ref.current) ss1Ref.current.style.opacity = ssOp
+    if (ss2Ref.current) ss2Ref.current.style.opacity = ssOp
+    if (ss3Ref.current) ss3Ref.current.style.opacity = ssOp
+
+    if (sunWrapRef.current)  sunWrapRef.current.style.opacity  = isDay   ? "1" : "0"
+    if (moonWrapRef.current) moonWrapRef.current.style.opacity = isNight ? "1" : "0"
+
+    const cloudOp = isDay ? "0.9" : "0"
+    if (c1Ref.current) c1Ref.current.style.opacity = cloudOp
+    if (c2Ref.current) c2Ref.current.style.opacity = cloudOp
+    if (c3Ref.current) c3Ref.current.style.opacity = cloudOp
+
+    if (hazeRef.current)
+      hazeRef.current.style.opacity = (dayProgress > 0.20 && dayProgress < 0.80) ? "0.5" : "0"
+  }, [dayProgress])
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, display: "block" }}
-    />
+    <>
+      <style dangerouslySetInnerHTML={{ __html: SKY_CSS }} />
+      <div ref={skyRef} className="ssky">
+        <div ref={starsRef} className="ssky-stars" />
+        <div ref={ss1Ref} className="ssky-ss ssky-ss1" />
+        <div ref={ss2Ref} className="ssky-ss ssky-ss2" />
+        <div ref={ss3Ref} className="ssky-ss ssky-ss3" />
+        <div ref={sunWrapRef} className="ssky-cel-wrap" style={{opacity:0}}>
+          <div className="ssky-body ssky-sun" />
+        </div>
+        <div ref={moonWrapRef} className="ssky-cel-wrap" style={{opacity:0}}>
+          <div className="ssky-body ssky-moon" />
+        </div>
+        <div ref={c1Ref} className="ssky-cloud ssky-c1">
+          <div className="ssky-clayer" /><div className="ssky-clayer" /><div className="ssky-clayer" />
+        </div>
+        <div ref={c2Ref} className="ssky-cloud ssky-c2">
+          <div className="ssky-clayer" /><div className="ssky-clayer" /><div className="ssky-clayer" />
+        </div>
+        <div ref={c3Ref} className="ssky-cloud ssky-c3">
+          <div className="ssky-clayer" /><div className="ssky-clayer" /><div className="ssky-clayer" />
+        </div>
+        <div ref={hazeRef} className="ssky-haze" />
+      </div>
+    </>
   )
 }
