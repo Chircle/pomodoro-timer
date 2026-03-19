@@ -9,6 +9,18 @@ import { RoundDots } from "@/components/round-dots"
 import { type Phase, BREAK_DURATION, CIRCUMFERENCE, playDingSound } from "@/lib/pomodoro"
 import "./pomodoro.css"
 
+const FOCUS_TRACKS = [
+  'dark-mode-build.mp3',
+  'Moss On My Notebook.mp3',
+  'Soft Debugging Lights.mp3',
+  'Moss On My Notebook-happier.mp3',
+]
+const BREAK_TRACKS = [
+  'sunny-nap-plushies.mp3',
+  'Moss On My Notebook-happier.mp3',
+]
+function pickRandom<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
+
 export default function PomodoroPage() {
   const [totalRounds, setTotalRounds] = useState(4)
   const [currentRound, setCurrentRound] = useState(1)
@@ -23,13 +35,20 @@ export default function PomodoroPage() {
   const breakAudio = useRef<HTMLAudioElement | null>(null)
   const dingTriggered = useRef(false)
 
+  const switchTrack = (audio: HTMLAudioElement, tracks: string[]) => {
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    audio.pause()
+    audio.src = `${base}/audio/${pickRandom(tracks)}`
+    audio.currentTime = 0
+  }
+
   // Init audio on client only
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-    focusAudio.current = new Audio(`${base}/audio/dark-mode-build.mp3`)
+    focusAudio.current = new Audio(`${base}/audio/${pickRandom(FOCUS_TRACKS)}`)
     focusAudio.current.volume = volume
     focusAudio.current.loop = true
-    breakAudio.current = new Audio(`${base}/audio/sunny-nap-plushies.mp3`)
+    breakAudio.current = new Audio(`${base}/audio/${pickRandom(BREAK_TRACKS)}`)
     breakAudio.current.volume = volume
     breakAudio.current.loop = true
     return () => {
@@ -87,10 +106,12 @@ export default function PomodoroPage() {
         setPhase("done")
         setIsRunning(false)
       } else {
+        if (breakAudio.current) switchTrack(breakAudio.current, BREAK_TRACKS)
         setPhase("break")
         setTimeLeft(BREAK_DURATION)
       }
     } else if (phase === "break") {
+      if (focusAudio.current) switchTrack(focusAudio.current, FOCUS_TRACKS)
       setCurrentRound(r => r + 1)
       setPhase("focus")
       setTimeLeft(focusMins * 60)
@@ -98,6 +119,7 @@ export default function PomodoroPage() {
   }, [timeLeft, isRunning, phase, currentRound, totalRounds])
 
   const start = () => {
+    if (focusAudio.current) switchTrack(focusAudio.current, FOCUS_TRACKS)
     dingTriggered.current = false
     setCurrentRound(1)
     setPhase("focus")
