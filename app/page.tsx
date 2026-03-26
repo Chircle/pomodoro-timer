@@ -354,13 +354,6 @@ export default function PomodoroPage() {
           totalRounds={totalRounds}
           currentRound={currentRound}
           phase={phase}
-          onSelectRound={i => {
-            dingTriggered.current = false
-            setCurrentRound(i + 1)
-            setPhase("focus")
-            setTimeLeft(focusMins * 60)
-            setIsRunning(true)
-          }}
         />
       </main>
     </div>

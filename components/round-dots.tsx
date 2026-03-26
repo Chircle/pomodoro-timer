@@ -4,10 +4,9 @@ interface Props {
   totalRounds: number
   currentRound: number
   phase: Phase
-  onSelectRound: (index: number) => void
 }
 
-export function RoundDots({ totalRounds, currentRound, phase, onSelectRound }: Props) {
+export function RoundDots({ totalRounds, currentRound, phase }: Props) {
   return (
     <div className="round-dots">
       {Array.from({ length: totalRounds }, (_, i) => {
@@ -15,11 +14,9 @@ export function RoundDots({ totalRounds, currentRound, phase, onSelectRound }: P
         const done = phase !== "idle" && num < currentRound
         const active = phase !== "idle" && num === currentRound
         return (
-          <button
+          <div
             key={i}
             className={`dot${done ? " dot-done" : ""}${active ? " dot-current" : ""}`}
-            onClick={() => onSelectRound(i)}
-            aria-label={`Runde ${num}`}
           />
         )
       })}
