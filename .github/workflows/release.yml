@@ -48,14 +48,25 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Pomodoro Timer ${{ github.ref_name }}'
           releaseBody: |
-            ## What's new
-            See commit history for details.
+            ## Pomodoro Timer – Desktop App
 
-            ## Downloads
-            | Platform | File |
-            |----------|------|
-            | Windows  | `.msi` or `.exe` (NSIS installer) |
-            | macOS    | `.dmg` (Universal – Intel + Apple Silicon) |
+            Native desktop app built with [Tauri](https://tauri.app/) + Next.js.
+
+            ### Features
+            - 🍅 Animated shader backgrounds (focus vs. break phase)
+            - ⏱ Circular countdown ring + round tracker dots
+            - 🎵 Ambient music with crossfade, background-tab safe
+            - 🔔 Synthesized ding alert in the final seconds of each phase
+            - ⚙️ Configurable focus duration and number of rounds
+
+            ### Downloads
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | Windows  | `.msi` | Recommended installer |
+            | Windows  | `_x64-setup.exe` | NSIS alternative |
+            | macOS    | `.dmg` | Universal – Intel + Apple Silicon |
+
+            > First launch on macOS: right-click → Open to bypass Gatekeeper (app is not notarized).
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

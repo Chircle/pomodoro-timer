@@ -1,13 +1,13 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "my-project",
+  "productName": "Pomodoro Timer",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "dev.simert.pomodoro-timer",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "cross-env TAURI_BUILD=1 npm run build"
   },
   "app": {
     "windows": [
