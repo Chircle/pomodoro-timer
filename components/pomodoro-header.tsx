@@ -77,7 +77,7 @@ export function PomodoroHeader({
         <button
           className="rounds-btn"
           onClick={() => {
-            const v = Math.min(25, focusMins + 5)
+            const v = Math.min(60, focusMins + 5)
             setFocusMins(v)
             if (phase === "idle") setTimeLeft(v * 60)
           }}
