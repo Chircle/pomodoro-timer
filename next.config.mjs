@@ -1,11 +1,12 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production'
+const isTauri = process.env.TAURI_BUILD === '1'
 
 const nextConfig = {
   output: 'export',
-  basePath: isProd ? '/pomodoro-timer' : '',
+  basePath: isProd && !isTauri ? '/pomodoro-timer' : '',
   env: {
-    NEXT_PUBLIC_BASE_PATH: isProd ? '/pomodoro-timer' : '',
+    NEXT_PUBLIC_BASE_PATH: isProd && !isTauri ? '/pomodoro-timer' : '',
   },
   typescript: {
     ignoreBuildErrors: true,
