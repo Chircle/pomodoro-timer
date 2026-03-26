@@ -8,30 +8,30 @@ A visually rich Pomodoro timer built with **Next.js**, featuring animated shader
 - **Configurable sessions** — set your focus duration (minutes) and number of rounds before starting
 - **Visual timer ring** — a circular SVG progress ring counts down each phase
 - **Round tracker** — dot indicators show completed and remaining rounds
-- **Ambient music** — background music plays automatically during focus and break phases, with individual volume control and a mute toggle
-- **Ding alert** — a synthesized chime (Web Audio API) fires 4 seconds before each phase ends
+- **Ambient music** — background music plays automatically during focus and break phases, with a volume slider and mute toggle; music continues playing correctly even when the browser tab is in the background
+- **Music playlist** — multiple focus and break tracks are shuffled and crossfaded automatically
+- **Ding alert** — a synthesized chime (Web Audio API) fires in the final seconds before each phase ends, with its own volume slider
 - **Phase labels in German** — _fokuszeit_, _pausenzeit_, _geschafft!_, _bereit?_
 
 ## Music
 
-Two ambient tracks play during sessions:
+Ambient tracks play during sessions, shuffled and crossfaded:
 
-| Phase | Track |
-|-------|-------|
-| Focus | *dark-mode-build* |
-| Break | *sunny-nap-plushies* |
+| Phase | Tracks |
+|-------|--------|
+| Focus | *dark-mode-build*, *Moss On My Notebook*, *Soft Debugging Lights*, *Soft Debug Dreams*, *Soft Morning Loop* (×2) |
+| Break | *sunny-nap-plushies*, *Moss On My Notebook (happier)* |
 
-> Both tracks were generated using **SUNO AI** for **non-commercial use only**.
+> All tracks were generated using **SUNO AI** for **non-commercial use only**.
 
 ## Tech Stack
 
-- [Next.js 16](https://nextjs.org/) (App Router)
+- [Next.js 16](https://nextjs.org/) (App Router, static export)
 - [React 19](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Radix UI](https://www.radix-ui.com/) primitives via shadcn/ui
-- [Lucide React](https://lucide.dev/) icons
+- [Tailwind CSS v4](https://tailwindcss.com/)
 - Web Audio API (synthesized ding sound)
-- GLSL-style shader backgrounds via canvas / CSS
+- HTML Audio with A/B crossfade (setTimeout-based, background-tab safe)
+- CSS shader backgrounds via canvas / CSS animations
 
 ## Getting Started
 
@@ -46,20 +46,18 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ```
 app/
-  page.tsx          # Main Pomodoro page
+  page.tsx          # Main Pomodoro page & all timer logic
   layout.tsx        # Root layout
 components/
   background-shader.tsx   # Animated background for focus phases
   sky-shader.tsx          # Sky background for break phases
-  pomodoro-header.tsx     # Controls: settings, music, start/stop
+  pomodoro-header.tsx     # Controls: settings, music volume, ding volume, start/stop
   timer-ring.tsx          # Circular countdown ring
-  round-dots.tsx          # Round indicator dots
+  round-dots.tsx          # Round indicator dots (display only)
 lib/
   pomodoro.ts       # Types, constants, ding sound synthesizer
 public/
-  audio/
-    dark-mode-build.mp3       # Focus phase music (SUNO AI)
-    sunny-nap-plushies.mp3    # Break phase music (SUNO AI)
+  audio/            # Ambient music tracks (SUNO AI, non-commercial)
 ```
 
 ## License
