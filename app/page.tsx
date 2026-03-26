@@ -13,7 +13,9 @@ const FOCUS_TRACKS = [
   'dark-mode-build.mp3',
   'Moss On My Notebook.mp3',
   'Soft Debugging Lights.mp3',
-  'Moss On My Notebook-happier.mp3',
+  'Soft Debug Dreams.mp3',
+  'Soft Morning Loop.mp3',
+  'Soft Morning Loop-v2.mp3',
 ]
 const BREAK_TRACKS = [
   'sunny-nap-plushies.mp3',
@@ -58,7 +60,7 @@ export default function PomodoroPage() {
 
   // Crossfade / polling
   const isCrossfading = useRef(false)
-  const crossfadeRaf = useRef<number | null>(null)
+  const crossfadeRaf = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const dingTriggered = useRef(false)
@@ -73,7 +75,7 @@ export default function PomodoroPage() {
 
   // ── helpers ────────────────────────────────────────────────────────────────
   const stopCrossfade = () => {
-    if (crossfadeRaf.current) { cancelAnimationFrame(crossfadeRaf.current); crossfadeRaf.current = null }
+    if (crossfadeRaf.current) { clearTimeout(crossfadeRaf.current); crossfadeRaf.current = null }
     isCrossfading.current = false
   }
 
@@ -113,6 +115,7 @@ export default function PomodoroPage() {
     isCrossfading.current = true
     const startTime = performance.now()
 
+    const STEP_MS = 100
     const animate = () => {
       const t = Math.min((performance.now() - startTime) / 1000 / FADE_SECS, 1)
       const vol = musicOnRef.current ? volumeRef.current : 0
@@ -120,7 +123,7 @@ export default function PomodoroPage() {
       next.volume = vol * t
 
       if (t < 1) {
-        crossfadeRaf.current = requestAnimationFrame(animate)
+        crossfadeRaf.current = setTimeout(animate, STEP_MS)
       } else {
         curr.pause()
         curr.currentTime = 0
@@ -136,7 +139,7 @@ export default function PomodoroPage() {
       }
     }
 
-    crossfadeRaf.current = requestAnimationFrame(animate)
+    crossfadeRaf.current = setTimeout(animate, STEP_MS)
   }
 
   const startPoll = () => {
