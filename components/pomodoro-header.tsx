@@ -13,6 +13,8 @@ interface Props {
   setMusicOn: (fn: (m: boolean) => boolean) => void
   volume: number
   setVolume: (v: number) => void
+  dingVolume: number
+  setDingVolume: (v: number) => void
   setTimeLeft: (v: number) => void
   onStart: () => void
   onStop: () => void
@@ -25,6 +27,7 @@ export function PomodoroHeader({
   totalRounds, setTotalRounds,
   musicOn, setMusicOn,
   volume, setVolume,
+  dingVolume, setDingVolume,
   setTimeLeft,
   onStart, onStop, onTogglePause,
 }: Props) {
@@ -55,6 +58,19 @@ export function PomodoroHeader({
           value={volume}
           onChange={e => setVolume(parseFloat(e.target.value))}
           style={{ "--pct": `${volume * 100}%` } as React.CSSProperties}
+        />
+      </div>
+
+      {/* Ding volume */}
+      <div className="volume-wrap">
+        <span className="volume-icon">🔔</span>
+        <input
+          type="range"
+          className="volume-slider"
+          min={0} max={1} step={0.01}
+          value={dingVolume}
+          onChange={e => setDingVolume(parseFloat(e.target.value))}
+          style={{ "--pct": `${dingVolume * 100}%` } as React.CSSProperties}
         />
       </div>
 

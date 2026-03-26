@@ -43,6 +43,7 @@ export default function PomodoroPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [musicOn, setMusicOn] = useState(true)
   const [volume, setVolume] = useState(0.1)
+  const [dingVolume, setDingVolume] = useState(0.1)
 
   // Mirror mutable state in refs so callbacks never go stale
   const volumeRef = useRef(volume)
@@ -222,9 +223,9 @@ export default function PomodoroPage() {
   // Ding bei 3, 2, 1, 0 Sekunden
   useEffect(() => {
     if (isRunning && timeLeft <= 3) {
-      playDingSound(timeLeft)
+      playDingSound(timeLeft, dingVolume)
     }
-  }, [timeLeft, isRunning])
+  }, [timeLeft, isRunning, dingVolume])
 
   // Phase transition at 0
   useEffect(() => {
@@ -329,6 +330,8 @@ export default function PomodoroPage() {
         setMusicOn={setMusicOn}
         volume={volume}
         setVolume={setVolume}
+        dingVolume={dingVolume}
+        setDingVolume={setDingVolume}
         setTimeLeft={setTimeLeft}
         onStart={start}
         onStop={stop}

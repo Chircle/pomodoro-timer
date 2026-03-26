@@ -15,7 +15,7 @@ function getWarnCtx(): AudioContext {
   return _warnCtx
 }
 
-function beep(freq = 880, duration = 0.15) {
+function beep(freq: number, duration: number, volume: number) {
   try {
     const ctx  = getWarnCtx()
     const osc  = ctx.createOscillator()
@@ -23,7 +23,7 @@ function beep(freq = 880, duration = 0.15) {
     osc.connect(gain)
     gain.connect(ctx.destination)
     osc.frequency.value = freq
-    gain.gain.value     = 0.1
+    gain.gain.value     = volume
     osc.start()
     osc.stop(ctx.currentTime + duration)
   } catch {
@@ -32,7 +32,7 @@ function beep(freq = 880, duration = 0.15) {
 }
 
 /** Call this every second with the current timeLeft value (3, 2, 1, 0). */
-export function playDingSound(timeLeft: number) {
-  if (timeLeft === 3 || timeLeft === 2 || timeLeft === 1) beep(700, 0.15)
-  if (timeLeft === 0) beep(1200, 0.5)
+export function playDingSound(timeLeft: number, volume = 0.1) {
+  if (timeLeft === 3 || timeLeft === 2 || timeLeft === 1) beep(700, 0.15, volume)
+  if (timeLeft === 0) beep(1200, 0.5, volume)
 }
